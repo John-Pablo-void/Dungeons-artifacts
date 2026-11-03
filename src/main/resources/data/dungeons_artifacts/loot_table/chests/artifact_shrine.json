@@ -1,0 +1,92 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "dungeons_artifacts:soul_healer",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:item",
+          "name": "dungeons_artifacts:satchel_of_elixirs",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:item",
+          "name": "dungeons_artifacts:totem_of_shielding",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:item",
+          "name": "dungeons_artifacts:lightning_rod",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:item",
+          "name": "dungeons_artifacts:corrupted_seeds",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:item",
+          "name": "dungeons_artifacts:gong_of_weakening",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:item",
+          "name": "dungeons_artifacts:satchel_of_elements",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:item",
+          "name": "dungeons_artifacts:death_cap_mushroom",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:item",
+          "name": "dungeons_artifacts:ghost_cloak",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:item",
+          "name": "dungeons_artifacts:updraft_tome",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:item",
+          "name": "dungeons_artifacts:boots_of_levitation",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "rolls": {
+        "type": "minecraft:uniform",
+        "min": 1,
+        "max": 3
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:emerald",
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "count": {
+                "type": "minecraft:uniform",
+                "min": 1,
+                "max": 4
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "dungeons_artifacts:death_cap_mushroom"
+        }
+      ]
+    }
+  ]
+}

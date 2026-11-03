@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "dungeons-artifacts-test",
+  "version": "1.0.0",
+  "name": "Dungeons Artifacts Tests",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-gametest": [
+      "dev.johnpablo.dungeonsartifacts.ArtifactGameTests"
+    ],
+    "fabric-client-gametest": [
+      "dev.johnpablo.dungeonsartifacts.ArtifactClientTests"
+    ]
+  }
+}

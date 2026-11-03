@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "package": "dev.johnpablo.dungeonsartifacts.client.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "LivingRenderStateMixin",
+    "LivingRendererMixin",
+    "HandsMixin",
+    "ScreenEffectsMixin",
+    "LocalPlayerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
