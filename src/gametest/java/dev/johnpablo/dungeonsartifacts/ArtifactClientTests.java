@@ -24,6 +24,8 @@ public final class ArtifactClientTests implements FabricClientGameTest {
             context.runOnClient(mc -> mc.gui.setScreen(new InventoryScreen(mc.player)));
             context.waitTicks(10);context.takeScreenshot("artifacts-inventory");
             context.setScreen(()->null);
+            context.getInput().pressKey(org.lwjgl.glfw.GLFW.GLFW_KEY_J);
+            context.waitFor(mc -> dev.johnpablo.dungeonsartifacts.client.ArtifactsClient.showSouls);
             context.waitTicks(10);context.takeScreenshot("artifacts-soul-hud");
             world.getServer().runOnServer(server -> {if(!GhostMovement.begin(world.getConnection().getServerPlayer()))throw new AssertionError("Ghost activation");});
             context.waitFor(mc -> mc.player.hasEffect(ArtifactEffects.GHOST));
@@ -44,6 +46,22 @@ public final class ArtifactClientTests implements FabricClientGameTest {
                 var p=world.getConnection().getServerPlayer();
                 if(p.getZ()<=origin[2]+3||Math.abs(p.getY()-origin[1])>.1) throw new AssertionError("Client/server wall phase failed: "+p.position());
             });
+            world.getServer().runOnServer(server -> {
+                var p=world.getConnection().getServerPlayer();
+                var base=p.blockPosition();
+                p.teleportTo(p.level(),base.getX()+.5,base.getY(),base.getZ()+.5,java.util.Set.of(),0,85,false);
+                p.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+                var eye=net.minecraft.core.BlockPos.containing(p.getEyePosition());
+                for(int dx=-1;dx<=1;dx++)for(int dz=-1;dz<=1;dz++)for(int dy=0;dy<=1;dy++)p.level().setBlock(base.offset(dx,dy,dz),net.minecraft.world.level.block.Blocks.STONE.defaultBlockState(),3);
+                p.level().setBlock(eye,net.minecraft.world.level.block.Blocks.STONE.defaultBlockState(),3);
+                p.level().setBlock(p.blockPosition().below(),net.minecraft.world.level.block.Blocks.GOLD_BLOCK.defaultBlockState(),3);
+                p.level().setBlock(eye.above(),net.minecraft.world.level.block.Blocks.DIAMOND_BLOCK.defaultBlockState(),3);
+                p.teleportTo(p.level(),p.getX(),p.getY(),p.getZ(),java.util.Set.of(),0,85,false);
+            });
+            context.waitFor(mc -> mc.level.getBlockState(net.minecraft.core.BlockPos.containing(mc.player.getEyePosition())).is(net.minecraft.world.level.block.Blocks.STONE));
+            context.waitTicks(5);context.takeScreenshot("ghost-adjacent-floor");
+            world.getServer().runOnServer(server -> {var p=world.getConnection().getServerPlayer();p.teleportTo(p.level(),p.getX(),p.getY(),p.getZ(),java.util.Set.of(),0,-85,false);});
+            context.waitTicks(5);context.takeScreenshot("ghost-adjacent-ceiling");
             world.getServer().runOnServer(server -> GhostMovement.end(world.getConnection().getServerPlayer(),true));
             context.waitFor(mc -> !mc.player.hasEffect(ArtifactEffects.GHOST));
         }
@@ -59,14 +77,16 @@ public final class ArtifactClientTests implements FabricClientGameTest {
                 var chunk=level.getChunk(found.getFirst());
                 var start=chunk.getAllStarts().get(shrine.value());
                 if(start==null||!start.isValid()) throw new AssertionError("Missing shrine structure start");
-                var bounds=start.getBoundingBox();boolean chestFound=false;
+                var bounds=start.getBoundingBox();boolean potFound=false;
                 for(var pos:net.minecraft.core.BlockPos.betweenClosed(bounds.minX(),bounds.minY(),bounds.minZ(),bounds.maxX(),bounds.maxY(),bounds.maxZ())) {
                     level.getChunk(pos);
-                    if(level.getBlockEntity(pos) instanceof net.minecraft.world.level.block.entity.ChestBlockEntity chest
-                        && chest.getLootTable()!=null&&chest.getLootTable().identifier().equals(DungeonsArtifacts.id("chests/artifact_shrine"))) chestFound=true;
+                    if(level.getBlockEntity(pos) instanceof net.minecraft.world.level.block.entity.DecoratedPotBlockEntity pot
+                        && pot.getLootTable()!=null&&pot.getLootTable().identifier().equals(DungeonsArtifacts.id("pots/artifact_shrine"))) potFound=true;
                 }
-                if(!chestFound) throw new AssertionError("Natural shrine has no artifact chest");
-                player.setGameMode(GameType.CREATIVE);player.getAbilities().flying=true;player.onUpdateAbilities();
+                if(!potFound) throw new AssertionError("Natural shrine has no loot pots");
+                var frames=level.getEntitiesOfClass(net.minecraft.world.entity.decoration.ItemFrame.class,new net.minecraft.world.phys.AABB(bounds.minX(),bounds.minY(),bounds.minZ(),bounds.maxX()+1,bounds.maxY()+1,bounds.maxZ()+1));
+                if(frames.stream().noneMatch(f -> !f.getItem().isEmpty()&&f.survives()))throw new AssertionError("Natural shrine lacks supported artifact frame");
+                player.setGameMode(GameType.SPECTATOR);
                 player.teleportTo(level,bounds.maxX()+6,bounds.maxY()+4,bounds.maxZ()+6,java.util.Set.of(),135,30,false);
             });
             context.waitTicks(40);context.takeScreenshot("artifacts-natural-shrine");

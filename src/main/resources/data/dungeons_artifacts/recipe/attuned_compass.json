@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "IEI",
+    "SCS",
+    "IEI"
+  ],
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "E": "minecraft:echo_shard",
+    "S": "dungeons_artifacts:full_soul_bottle",
+    "C": "minecraft:compass"
+  },
+  "result": {
+    "id": "dungeons_artifacts:attuned_compass",
+    "count": 1
+  }
+}

@@ -19,8 +19,8 @@
   "tooltip.dungeons_artifacts.satchel_of_elements": "Losowy piorun, ogień albo lewitacja pobliskich wrogów. Odnowienie: 15 s.",
   "tooltip.dungeons_artifacts.death_cap_mushroom": "Zużywalny: Szybkość II 15 s, Siła II 10 s; magiczne obrażenia własne. Odnowienie: 10 s.",
   "tooltip.dungeons_artifacts.ghost_cloak": "Przenikaj przez ściany przez 10 s, niewidoczny dla mobów. Podłogi i sufity pozostają stałe. Odnowienie: 30 s.",
-  "tooltip.dungeons_artifacts.updraft_tome": "Ogłuszenie 4,5 s i lewitacja 3 s w promieniu 15 bloków. Odnowienie: 20 s.",
-  "tooltip.dungeons_artifacts.boots_of_levitation": "Włącz lub wyłącz lewitację, maks. 25 s. Wcześniejszy koniec: połowa czasu jako odnowienie; pełne użycie: 15 s.",
+  "tooltip.dungeons_artifacts.updraft_tome": "Maks. 6 celów: lewitacja II 3 s, potem ogłuszenie 4,5 s. Potrójne obrażenia upadku. Odnowienie: 20 s.",
+  "tooltip.dungeons_artifacts.boots_of_levitation": "Włącz lub wyłącz lewitację II, maks. 25 s. Wcześniejszy koniec: połowa czasu jako odnowienie; pełne użycie: 15 s.",
   "itemGroup.dungeons_artifacts": "Artefakty lochów",
   "tooltip.dungeons_artifacts.cost": "Koszt dusz: %s",
   "hud.dungeons_artifacts.souls": "Dusze: %s / %s",
@@ -34,5 +34,14 @@
   "effect.dungeons_artifacts.stunned": "Ogłuszenie",
   "enchantment.dungeons_artifacts.soul_vessel": "Naczynie dusz",
   "enchantment.dungeons_artifacts.soul_reservoir": "Zbiornik dusz",
-  "tag.item.dungeons_artifacts.artifacts": "Artefakty"
+  "tag.item.dungeons_artifacts.artifacts": "Artefakty",
+  "item.dungeons_artifacts.souls_in_a_bottle": "Dusze w butelce",
+  "item.dungeons_artifacts.full_soul_bottle": "Dusze w butelce (pełna)",
+  "item.dungeons_artifacts.liquid_souls": "Płynne dusze",
+  "item.dungeons_artifacts.attuned_compass": "Dostrojony kompas",
+  "enchantment.dungeons_artifacts.soul_vacuum": "Próżnia dusz",
+  "key.dungeons_artifacts.soul_meter": "Przełącz licznik dusz",
+  "tooltip.dungeons_artifacts.bottle": "Dusze: %s / 50",
+  "message.dungeons_artifacts.compass_broke": "Twój dostrojony kompas pękł: ołtarz jest bliżej niż 20 bloków.",
+  "message.dungeons_artifacts.attuned": "Poziom dostrojenia dusz %s: +%s zbieranych dusz"
 }

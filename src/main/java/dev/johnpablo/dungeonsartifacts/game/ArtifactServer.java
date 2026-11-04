@@ -39,6 +39,7 @@ public final class ArtifactServer {
         return PlayerLedger.restore(capacity(p), p.getAttachedOrCreate(PlayerData.STATE));
     }
     public static void save(ServerPlayer p, PlayerLedger state) {
+        if(state.souls()==state.capacity()&&p.getAttachedOrCreate(PlayerData.FRACTION)!=0)p.setAttached(PlayerData.FRACTION,0);
         var snapshot = state.snapshot();
         if (!snapshot.equals(p.getAttachedOrCreate(PlayerData.STATE))) p.setAttached(PlayerData.STATE, snapshot);
         sync(p, PlayerData.SOULS, state.souls());
@@ -54,22 +55,26 @@ public final class ArtifactServer {
         var registry = p.level().registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
         for (var entry : Map.of("soul_vessel", DungeonsArtifacts.CONFIG.vesselCapacityPerLevel, "soul_reservoir", DungeonsArtifacts.CONFIG.reservoirCapacityPerLevel).entrySet()) {
             var enchantment = registry.get(ResourceKey.create(Registries.ENCHANTMENT, DungeonsArtifacts.id(entry.getKey())));
-            if (enchantment.isPresent()) for (EquipmentSlot slot : EquipmentSlot.values())
+            if (enchantment.isPresent()) for (EquipmentSlot slot : entry.getKey().equals("soul_vessel")
+                    ? List.of(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET)
+                    : List.of(EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND))
                 amount += EnchantmentHelper.getItemEnchantmentLevel(enchantment.get(), p.getItemBySlot(slot)) * entry.getValue();
         }
         return amount;
     }
     public static void initialize() {
         ServerTickEvents.START_SERVER_TICK.register(ShieldSystem::tick);
+        ServerTickEvents.END_SERVER_TICK.register(server -> AttunementSystem.tick(server.overworld()));
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             for (ServerPlayer p : server.getPlayerList().getPlayers()) {
                 PlayerLedger state = ledger(p);
                 if (state.tickBoots(now(p)) == PlayerLedger.Boots.EXPIRED) land(p);
                 if (state.bootsActive()) {
                     if (!p.isAlive() || p.isSpectator() || p.isPassenger()) { state.stopBoots(now(p)); land(p); }
-                    else effect(p, MobEffects.LEVITATION, 5, 0);
+                    else effect(p, MobEffects.LEVITATION, 5, 1);
                 }
                 GhostMovement.tick(p);
+                AttunementSystem.tickPlayer(p);
                 save(p, state);
                 int denied = p.getAttachedOrCreate(PlayerData.DENIED);
                 if (denied > 0) p.setAttached(PlayerData.DENIED, denied - 1);
@@ -88,7 +93,7 @@ public final class ArtifactServer {
             if (killer instanceof TamableAnimal pet) killer = pet.getOwner();
             if (entity instanceof Enemy && killer instanceof ServerPlayer p && !allied(p, entity)) {
                 var state = ledger(p);
-                int gained = state.collect(DungeonsArtifacts.CONFIG.soulsPerHostileKill);
+                int gained = SoulGathering.collectKill(p, state, source);
                 save(p, state);
                 if (gained > 0) { particles(p.level(), ParticleTypes.SOUL, p.position().add(0, 1, 0), 12); sound(p, SoundEvents.EXPERIENCE_ORB_PICKUP, .5f); }
             }
@@ -101,12 +106,14 @@ public final class ArtifactServer {
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
             server.getPlayerList().getPlayers().forEach(p -> cleanup(p, true));
             ShieldSystem.clear();
+            AttunementSystem.clear();
         });
         ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
             if (entity.entityTags().contains("dungeons_artifacts_shield") && !ShieldSystem.owns(entity.getUUID())) entity.discard();
         });
     }
     private static void cleanup(ServerPlayer p, boolean safeExit) {
+        AttunementSystem.release(p.getUUID());
         var state = ledger(p);
         if (state.bootsActive()) { state.stopBoots(now(p)); land(p); }
         GhostMovement.end(p, safeExit);
@@ -115,7 +122,7 @@ public final class ArtifactServer {
     }
     private static void land(ServerPlayer p) {
         p.removeEffect(MobEffects.LEVITATION);
-        effect(p, MobEffects.SLOW_FALLING, 200, 0);
+
         p.fallDistance = 0;
     }
     public static InteractionResult use(ServerPlayer p, InteractionHand hand, Artifact artifact) {
@@ -127,7 +134,7 @@ public final class ArtifactServer {
             if (p.isPassenger()) return InteractionResult.FAIL;
             var result = state.toggleBoots(now(p));
             if (result == PlayerLedger.Boots.COOLDOWN) return deny(p, "cooldown");
-            if (result == PlayerLedger.Boots.STARTED) { effect(p, MobEffects.LEVITATION, 5, 0); sound(p, SoundEvents.BREEZE_WIND_CHARGE_BURST.value(), 1); }
+            if (result == PlayerLedger.Boots.STARTED) { effect(p, MobEffects.LEVITATION, 5, 1); sound(p, SoundEvents.BREEZE_WIND_CHARGE_BURST.value(), 1); }
             else land(p);
             save(p, state);
             return InteractionResult.SUCCESS;
@@ -181,7 +188,7 @@ public final class ArtifactServer {
                 if (hit.getType() == HitResult.Type.MISS) return false;
                 Vec3 pos = hit.getLocation();
                 lightning(p, pos);
-                // One damage application: vanilla lightning's 5 HP plus the requested extra 5.
+                // Preserve the rod's immediate ten HP; real flashes obey vanilla hurt immunity.
                 for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, new AABB(pos, pos).inflate(c.lightningRadius), e -> enemy(p, e) && e.distanceToSqr(pos) <= c.lightningRadius*c.lightningRadius))
                     e.hurtServer(level, level.damageSources().indirectMagic(p, p), 10);
             }
@@ -216,7 +223,12 @@ public final class ArtifactServer {
             case GHOST_CLOAK -> { return GhostMovement.begin(p); }
             case UPDRAFT_TOME -> {
                 var targets = enemies(p, 15); if (targets.isEmpty()) return false;
-                for (LivingEntity e : targets) { effect(e, ArtifactEffects.STUNNED, 90, 0); effect(e, MobEffects.LEVITATION, 60, 0); particles(level, ParticleTypes.CLOUD, e.position(), 35); }
+                targets.sort(Comparator.comparingDouble(p::distanceToSqr));
+                for (LivingEntity e : targets.stream().limit(6).toList()) {
+                    effect(e, MobEffects.LEVITATION, 60, 1);
+                    e.setAttached(PlayerData.UPDRAFT, 1);
+                    particles(level, ParticleTypes.CLOUD, e.position(), 35);
+                }
                 sound(p, SoundEvents.BREEZE_WIND_CHARGE_BURST.value(), 1);
             }
             case BOOTS_OF_LEVITATION -> throw new IllegalStateException("Boots use their own toggle state machine");
@@ -244,7 +256,7 @@ public final class ArtifactServer {
     }
     private static void lightning(ServerPlayer p, Vec3 pos) {
         LightningBolt bolt = new LightningBolt(EntityTypes.LIGHTNING_BOLT, p.level());
-        bolt.setPos(pos); bolt.setVisualOnly(true); bolt.setCause(p); p.level().addFreshEntity(bolt);
+        bolt.setPos(pos); bolt.setVisualOnly(false); bolt.setCause(p); p.level().addFreshEntity(bolt);
         particles(p.level(), ParticleTypes.ELECTRIC_SPARK, pos, 30);
     }
 }

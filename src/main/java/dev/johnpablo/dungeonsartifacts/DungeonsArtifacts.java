@@ -18,6 +18,7 @@ public final class DungeonsArtifacts implements ModInitializer {
         ArtifactItems.initialize();
         // Register attachments before Fabric's configuration handshake advertises supported IDs.
         org.slf4j.LoggerFactory.getLogger(ID).info("Registered player state {}", PlayerData.STATE.identifier());
+        dev.johnpablo.dungeonsartifacts.game.AttunementSystem.SITES.identifier();
         ArtifactServer.initialize();
     }
 }

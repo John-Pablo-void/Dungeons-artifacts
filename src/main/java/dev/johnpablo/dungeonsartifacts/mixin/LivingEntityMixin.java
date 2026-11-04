@@ -15,6 +15,24 @@ abstract class LivingEntityMixin {
         // Corrupted vines make even undead targets susceptible during application.
         if(effect.is(MobEffects.POISON)&&((LivingEntity)(Object)this).hasEffect(ArtifactEffects.ROOTED)) cir.setReturnValue(true);
     }
+    @Inject(method="tick", at=@At("TAIL"))
+    private void updraftTick(CallbackInfo ci) {
+        LivingEntity e=(LivingEntity)(Object)this;
+        if(e.level().isClientSide()) return;
+        int phase=e.getAttachedOrCreate(dev.johnpablo.dungeonsartifacts.soul.PlayerData.UPDRAFT);
+        if(phase==1 && !e.hasEffect(MobEffects.LEVITATION)) {
+            e.addEffect(new MobEffectInstance(ArtifactEffects.STUNNED,90,0));
+            e.setAttached(dev.johnpablo.dungeonsartifacts.soul.PlayerData.UPDRAFT,2);
+        } else if(phase==2 && e.onGround()) e.setAttached(dev.johnpablo.dungeonsartifacts.soul.PlayerData.UPDRAFT,0);
+    }
+    @Inject(method="calculateFallDamage", at=@At("RETURN"), cancellable=true)
+    private void updraftFall(double distance,float multiplier,CallbackInfoReturnable<Integer> cir) {
+        LivingEntity e=(LivingEntity)(Object)this;
+        if(e.getAttachedOrCreate(dev.johnpablo.dungeonsartifacts.soul.PlayerData.UPDRAFT)>0) {
+            cir.setReturnValue(cir.getReturnValue()*3);
+            if(!e.level().isClientSide()) e.setAttached(dev.johnpablo.dungeonsartifacts.soul.PlayerData.UPDRAFT,0);
+        }
+    }
     @Shadow protected abstract void removeEffectParticles();
     @Inject(method="updateSynchronizedMobEffectParticles",at=@At("TAIL"))
     private void hideGhostParticles(CallbackInfo ci) { if(GhostMovement.ghost((LivingEntity)(Object)this)) removeEffectParticles(); }

@@ -1,1 +1,18 @@
-{"required":true,"package":"dev.johnpablo.dungeonsartifacts.mixin","compatibilityLevel":"JAVA_25","mixins":["EntityMixin","LivingEntityMixin","MobMixin","ServerMovementMixin"],"injectors":{"defaultRequire":1}}
+{
+  "required": true,
+  "package": "dev.johnpablo.dungeonsartifacts.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "EntityMixin",
+    "LivingEntityMixin",
+    "MobMixin",
+    "ServerMovementMixin",
+    "SoulBrewingMixin",
+    "SoulPotionSlotMixin",
+    "SoulBrewingStandMixin",
+    "ShrineFrameMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

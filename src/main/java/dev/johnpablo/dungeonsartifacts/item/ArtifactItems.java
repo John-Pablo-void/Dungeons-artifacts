@@ -22,6 +22,7 @@ import net.minecraft.world.level.Level;
 public final class ArtifactItems {
     public static final EnumMap<Artifact, Item> ITEMS = new EnumMap<>(Artifact.class);
     public static void initialize() {
+        SoulItems.initialize();
         for (Artifact artifact : Artifact.values()) {
             var key = ResourceKey.create(Registries.ITEM, DungeonsArtifacts.id(artifact.id));
             Item item = new ArtifactItem(artifact, new Item.Properties().setId(key)
@@ -31,7 +32,7 @@ public final class ArtifactItems {
         Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, DungeonsArtifacts.id("artifacts"), FabricCreativeModeTab.builder()
             .title(Component.translatable("itemGroup.dungeons_artifacts"))
             .icon(() -> new ItemStack(ITEMS.get(Artifact.SOUL_HEALER)))
-            .displayItems((parameters, output) -> ITEMS.values().forEach(output::accept)).build());
+            .displayItems((parameters, output) -> { ITEMS.values().forEach(output::accept); for(Item item:java.util.List.of(SoulItems.BOTTLE,SoulItems.FULL_BOTTLE,SoulItems.LIQUID,SoulItems.COMPASS)) output.accept(item); }).build());
     }
     public static final class ArtifactItem extends Item {
         public final Artifact artifact;

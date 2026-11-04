@@ -1,0 +1,21 @@
+{
+  "description": {
+    "translate": "enchantment.dungeons_artifacts.soul_vacuum"
+  },
+  "supported_items": "#dungeons_artifacts:soul_vacuum_weapons",
+  "weight": 5,
+  "max_level": 1,
+  "min_cost": {
+    "base": 5,
+    "per_level_above_first": 8
+  },
+  "max_cost": {
+    "base": 35,
+    "per_level_above_first": 8
+  },
+  "anvil_cost": 2,
+  "slots": [
+    "mainhand"
+  ],
+  "effects": {}
+}

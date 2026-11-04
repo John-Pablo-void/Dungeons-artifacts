@@ -19,8 +19,8 @@
   "tooltip.dungeons_artifacts.satchel_of_elements": "Random lightning, fire or levitation around you. Cooldown: 15s.",
   "tooltip.dungeons_artifacts.death_cap_mushroom": "Consumed: Speed II 15s, Strength II 10s; magic self-damage. Cooldown: 10s.",
   "tooltip.dungeons_artifacts.ghost_cloak": "Phase through walls, unseen by mobs for 10s. Floors and ceilings remain solid. Cooldown: 30s.",
-  "tooltip.dungeons_artifacts.updraft_tome": "Stun 4.5s and levitation 3s within 15 blocks. Cooldown: 20s.",
-  "tooltip.dungeons_artifacts.boots_of_levitation": "Toggle levitation, up to 25s. Early stop: half-duration cooldown; full use: 15s.",
+  "tooltip.dungeons_artifacts.updraft_tome": "Up to 6 targets: Levitation II 3s, then stun 4.5s. Next fall deals triple damage. Cooldown: 20s.",
+  "tooltip.dungeons_artifacts.boots_of_levitation": "Toggle Levitation II, up to 25s. Early stop: half-duration cooldown; full use: 15s.",
   "itemGroup.dungeons_artifacts": "Dungeons Artifacts",
   "tooltip.dungeons_artifacts.cost": "Soul cost: %s",
   "hud.dungeons_artifacts.souls": "Souls: %s / %s",
@@ -34,5 +34,14 @@
   "effect.dungeons_artifacts.stunned": "Stunned",
   "enchantment.dungeons_artifacts.soul_vessel": "Soul Vessel",
   "enchantment.dungeons_artifacts.soul_reservoir": "Soul Reservoir",
-  "tag.item.dungeons_artifacts.artifacts": "Artifacts"
+  "tag.item.dungeons_artifacts.artifacts": "Artifacts",
+  "item.dungeons_artifacts.souls_in_a_bottle": "Souls in a Bottle",
+  "item.dungeons_artifacts.full_soul_bottle": "Souls in a Bottle (Full)",
+  "item.dungeons_artifacts.liquid_souls": "Liquid Souls",
+  "item.dungeons_artifacts.attuned_compass": "Attuned Compass",
+  "enchantment.dungeons_artifacts.soul_vacuum": "Soul Vacuum",
+  "key.dungeons_artifacts.soul_meter": "Toggle soul meter",
+  "tooltip.dungeons_artifacts.bottle": "Souls: %s / 50",
+  "message.dungeons_artifacts.compass_broke": "Your attuned compass shattered: the altar is within 20 blocks.",
+  "message.dungeons_artifacts.attuned": "Soul attunement level %s: +%s souls gathered"
 }
