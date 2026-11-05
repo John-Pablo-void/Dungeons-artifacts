@@ -27,14 +27,22 @@ public final class SoulGathering {
         boolean vacuum=enchant.isPresent() && EnchantmentHelper.getItemEnchantmentLevel(enchant.get(),weapon)>0;
         return rewardQuarters(artifacts,p.getAttachedOrCreate(PlayerData.ATTUNEMENT),vacuum);
     }
+    public static int collectQuarters(ServerPlayer p,int reward) {
+        var state=ArtifactServer.ledger(p);int before=state.souls()*4+p.getAttachedOrCreate(PlayerData.FRACTION);
+        int total=Math.min(state.capacity()*4,before+reward);
+        var old=state.snapshot();
+        state=PlayerLedger.restore(state.capacity(),new PlayerLedger.Snapshot(total/4,old.cooldowns(),old.bootsStarted()));
+        p.setAttached(PlayerData.FRACTION,total%4);ArtifactServer.save(p,state);return total-before;
+    }
     public static int collectKill(ServerPlayer p,PlayerLedger state,net.minecraft.world.damagesource.DamageSource source) {
         var weapon=source.getWeaponItem();
         int reward=reward(p,weapon==null?p.getMainHandItem():weapon);
         // Bottling captures this kill's souls instead of duplicating them into the meter.
-        if(SoulItems.fillOffhand(p,reward)) return reward;
+        if(SoulItems.fillOffhand(p,reward)) { ArtifactChallenges.award(p,"sold_your_soul");return reward; }
+        int before=state.souls()*4+p.getAttachedOrCreate(PlayerData.FRACTION);
         int quarters=p.getAttachedOrCreate(PlayerData.FRACTION)+reward;
         int gained=state.collect(quarters/4);
         p.setAttached(PlayerData.FRACTION,state.souls()==state.capacity()?0:quarters%4);
-        return gained;
+        return state.souls()*4+p.getAttachedOrCreate(PlayerData.FRACTION)-before;
     }
 }

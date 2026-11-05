@@ -20,6 +20,7 @@ import net.minecraft.world.phys.Vec3;
 
 /** Eight seed-derived sites anchored to the initial world spawn, saved across /setworldspawn. */
 public final class AttunementSystem {
+    public static final int RITUAL_TICKS=200;
     public record Site(BlockPos pos,boolean built,boolean used) {
         static final Codec<Site> CODEC=RecordCodecBuilder.create(i -> i.group(
             BlockPos.CODEC.fieldOf("pos").forGetter(Site::pos),Codec.BOOL.fieldOf("built").forGetter(Site::built),
@@ -97,13 +98,18 @@ public final class AttunementSystem {
             ArtifactServer.effect(p,dev.johnpablo.dungeonsartifacts.effect.ArtifactEffects.ROOTED,5,0);
             p.teleportTo(center.x,center.y,center.z);p.setDeltaMovement(Vec3.ZERO);
             int tick=ritual.ticks+1;
-            double radius=tick<40?1.6:Math.max(0,1.6*(80-tick)/40.0), height=Math.min(1.1,tick/36.0);
+            double radius=tick<120?1.6:Math.max(0,1.6*(RITUAL_TICKS-tick)/80.0), height=Math.min(1.1,tick/70.0);
             for(int k=0;k<16;k++) {double a=k*Math.PI/8+tick*.08;world.sendParticles(ParticleTypes.SOUL,center.x+Math.cos(a)*radius,center.y+height,center.z+Math.sin(a)*radius,1,0,0,0,0);}
-            if(tick>=80) {
+            if(tick%4==0) {
+                world.sendParticles(ParticleTypes.SCULK_SOUL,center.x,center.y+.15,center.z,5,.8,.1,.8,.02);
+                world.sendParticles(new net.minecraft.core.particles.SculkChargeParticleOptions(tick*.1f),center.x,center.y+1,center.z,6,radius,.25,radius,0);
+            }
+            if(tick>=RITUAL_TICKS) {
                 update(world,ritual.site,new Site(site.pos,true,true));
                 int level=p.getAttachedOrCreate(PlayerData.ATTUNEMENT)+1;p.setAttached(PlayerData.ATTUNEMENT,level);
                 world.setBlock(site.pos,Blocks.CRYING_OBSIDIAN.defaultBlockState(),3);
                 p.sendSystemMessage(Component.translatable("message.dungeons_artifacts.attuned",level,level));
+                ArtifactChallenges.award(p,"attuned");
                 RITUALS.remove(p.getUUID());
             }else RITUALS.put(p.getUUID(),new Ritual(p.getUUID(),ritual.site,tick));
             return;

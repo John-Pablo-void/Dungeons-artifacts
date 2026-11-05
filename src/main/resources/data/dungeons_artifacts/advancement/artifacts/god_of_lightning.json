@@ -1,0 +1,28 @@
+{
+  "criteria": {
+    "completed": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "completed"
+    ]
+  ],
+  "display": {
+    "icon": {
+      "id": "dungeons_artifacts:lightning_rod"
+    },
+    "title": {
+      "translate": "advancements.dungeons_artifacts.god_of_lightning.title"
+    },
+    "description": {
+      "translate": "advancements.dungeons_artifacts.god_of_lightning.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "dungeons_artifacts:artifacts/root"
+}

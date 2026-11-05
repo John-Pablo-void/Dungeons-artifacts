@@ -1,0 +1,28 @@
+{
+  "criteria": {
+    "completed": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "completed"
+    ]
+  ],
+  "display": {
+    "icon": {
+      "id": "dungeons_artifacts:boots_of_levitation"
+    },
+    "title": {
+      "translate": "advancements.dungeons_artifacts.brought_a_bucket.title"
+    },
+    "description": {
+      "translate": "advancements.dungeons_artifacts.brought_a_bucket.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "dungeons_artifacts:artifacts/root"
+}

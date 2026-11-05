@@ -54,7 +54,7 @@ public final class SoulItems {
     private static final class BottleItem extends Item {
         BottleItem(Properties properties){super(properties);}
         @Override public void appendHoverText(ItemStack stack,TooltipContext context,TooltipDisplay display,Consumer<Component> text,TooltipFlag flag) {
-            text.accept(Component.translatable("tooltip.dungeons_artifacts.bottle",stored(stack)/4.0));
+            text.accept(Component.translatable("tooltip.dungeons_artifacts.bottle",stored(stack)/4));
         }
     }
 }

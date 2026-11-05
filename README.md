@@ -1,6 +1,6 @@
 # Dungeons Artifacts — Fabric / Minecraft 26.2
 
-Eleven server-controlled artifacts, persistent souls, a toggleable soul meter, three
+Eleven server-controlled artifacts, recoverable soul echoes, a toggleable soul meter, three
 enchantments, framed shrine artifacts, and eight soul attunement altars per world.
 Minecraft **26.2** and **Java 25** are required. This mod is required on both the
 server and participating clients.
@@ -10,7 +10,7 @@ server and participating clients.
 Install Fabric Loader **0.20.1 or newer** for Minecraft **26.2**. Place these files
 in the instance's `mods` folder (and the dedicated server's `mods` folder):
 
-- `dungeons-artifacts-0.2.0-dev.jar`
+- `dungeons-artifacts-0.3.0-dev.jar`
 - Fabric API **0.161.0+26.2** or a compatible newer release for 26.2.
 
 The `-sources.jar` is for development; it is not the playable mod.
@@ -19,14 +19,19 @@ No additional mod library is required. Punchy is optional; see compatibility bel
 ## Playing
 
 All artifacts appear in the **Dungeons Artifacts** creative tab. Right-click with
-an artifact in either hand. Starting soul capacity is **50**. Hostile kills grant
+an artifact in either hand. Starting soul capacity is **50**. Credited mob kills grant
 **0.5 souls** without soul artifacts, **1 / 2 / 3 souls** with **1 / 2 / 3+**
 soul artifacts anywhere in the inventory (including the offhand). Soul artifacts
 are Soul Healer, Lightning Rod and Ghost Cloak; duplicate items count. Pet kills
-credited to their owner also count. Fractional souls are retained across saves.
+credited to their owner also count. Recent player hits retain vanilla kill credit
+when a mob subsequently dies from falling, fire or another cause. Passive mobs
+also count; allied mobs and players do not. Soul particles rise from the killed
+mob. Fractional souls are retained across saves.
 
 Press **J** (rebindable in Controls) to replace the experience bar and level with
-the soul meter; press it again to restore XP. Mounted jump bars remain visible.
+a cyan XP-style soul bar; press it again to restore XP. Only your current whole
+soul count is displayed, rounded down. Fractional amounts still count normally
+and contribute to the progress bar. Mounted jump bars remain visible.
 Failed activations show a reason and do not consume souls. Boots have no HUD timer.
 
 | Artifact | Action | Souls | Cooldown |
@@ -45,8 +50,7 @@ Failed activations show a reason and do not consume souls. Boots have no HUD tim
 
 Timers use server ticks at 20 ticks/second. Boots preserve half-tick cooldowns
 (0.025 s); enforcement occurs on server ticks. Cooldowns belong to the player and artifact type, so changing
-stacks or hands does not reset them. Souls and cooldowns survive reconnects and
-player death. Boots stop on logout, death or dimension change; stopping removes levitation and clears accumulated fall distance without adding
+stacks or hands does not reset them. Souls and cooldowns survive reconnects. Cooldowns survive death. Boots stop on logout, death or dimension change; stopping removes levitation and clears accumulated fall distance without adding
 Slow Falling. Falling afterward can hurt you. The mushroom
 stacks to 16, consumes exactly one on successful survival use, and is retained in
 creative. Peaceful mode causes no mushroom self-damage.
@@ -65,6 +69,11 @@ Ending inside a block searches for free supported space, then the saved safe
 position. If the surroundings have been completely obstructed and no safe exit
 can be found, the effect briefly extends and retries instead of trapping the
 player. Dimension transitions discard anchors from other dimensions.
+
+Inside a solid wall, Ghost Cloak reveals a five-block horizontal cutaway with a
+diamond footprint and exactly two block layers: feet and head. Floor, ceiling and
+perimeter use nearby block textures; the view remains closed beyond its range.
+This is a client view only and never removes blocks from the world.
 
 ## Survival discovery and enchantments
 
@@ -101,10 +110,10 @@ by a data pack.
 
 ## Bottles and soul attunement
 
-Hold empty glass bottles in your **offhand** while killing hostile mobs to start
+Hold empty glass bottles in your **offhand** while receiving credit for mob kills to start
 filling a soul bottle. Each kill is captured at your current soul gathering rate,
-**instead of** adding those souls to your meter. The tooltip displays the exact
-amount, up to **50**. Partial and full bottles have different textures. Spare
+**instead of** adding those souls to your meter. The tooltip displays the amount rounded down, up to **50**, while storage retains
+fractions exactly. Partial and full bottles have different textures. Spare
 empty bottles in the offhand stack return to inventory (or drop if it is full).
 
 Brew a **full** soul bottle with **one ice block** in a fueled brewing stand to
@@ -115,10 +124,13 @@ Craft an **Attuned Compass** using this pattern (I = iron ingot, E = echo shard,
 S = full soul bottle, C = compass):
 
 ```text
-I E I
-S C S
-I E I
+E S E
+I C I
+  E
 ```
+
+The recipe uses one full bottle and unlocks when you obtain Soul Healer, Lightning
+Rod or Ghost Cloak.
 
 There are exactly **eight** altar sites in the Overworld, 2,000–20,000 horizontal
 blocks from the world's spawn when the system first initializes. Their positions
@@ -128,12 +140,52 @@ The compass points to the nearest unused altar and breaks, with a message, when
 you enter its 20-block horizontal radius in the Overworld. It cannot guide you
 in other dimensions. Once all altars are spent, it has no target.
 
-Stand on the central lodestone for a **four-second ritual**. You are held in place
-as souls rise, circle, and condense into you. Each completed altar increases your
+Stand on the central lodestone for a **ten-second ritual**. You are held in place
+as souls and sculk particles rise, circle, and condense into you. Each completed altar increases your
 persistent attunement by one and adds **+1 soul per kill** before Soul Vacuum's
 multiplier. An altar is consumed globally, so only one player can claim each one.
 Used centers turn into crying obsidian. Logout, death or leaving cancels an
 unfinished ritual without spending the altar. Attunement survives death.
+
+## Death echoes
+
+With `keepInventory` disabled, death removes all carried souls and leaves a
+**soul echo** at the death location: an orbit of cyan soul flames and sculk souls.
+Return within two blocks to reclaim it. Only its owner can collect it; echoes
+cannot burn or despawn, survive saving/unloading, and multiple deaths create
+separate echoes. If your capacity is lower, the excess stays in the echo until
+you can collect it. Death messages provide coordinates. Void deaths place the
+echo on the surface at the same X/Z coordinates so it remains reachable.
+
+With `keepInventory` enabled, souls (including fractions) stay with you and no
+echo is created. Attunement and command-set capacity always survive death.
+
+## Soul commands and advancements
+
+Operator level 2 (or the corresponding server permission) is required. Both
+`/Soul` and `/soul` work, including player selectors:
+
+```mcfunction
+/Soul add @p 25
+/Soul clear @p
+/Soul max @p 100
+```
+
+`add` respects current capacity; `clear` also clears fractional souls while
+preserving cooldowns. `max` sets a persistent **absolute capacity** for each
+target, overriding equipment bonuses, and clamps the current balance if needed.
+Amounts range from 0 to 1,000,000. Commands affect the player's balance, not any
+unclaimed echoes left elsewhere.
+
+The **Artifacts** advancement tab unlocks on obtaining an artifact:
+
+- **God of lightning:** ten successful Lightning Rod uses within five seconds.
+- **You sold me your soul:** capture a credited kill in an offhand bottle.
+- **I should have brought a bucket:** use levitation boots for their full 25 seconds.
+- **DEATHcap shroom:** die from the mushroom's self-damage.
+- **Soul searching:** reclaim a death echo.
+- **The sculk chose me:** finish an attunement ritual.
+- **A very heavy backpack:** carry all eleven artifacts at once.
 
 ## Configuration
 

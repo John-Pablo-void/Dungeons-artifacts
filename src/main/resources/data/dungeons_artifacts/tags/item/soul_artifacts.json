@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    "dungeons_artifacts:soul_healer",
+    "dungeons_artifacts:lightning_rod",
+    "dungeons_artifacts:ghost_cloak"
+  ]
+}

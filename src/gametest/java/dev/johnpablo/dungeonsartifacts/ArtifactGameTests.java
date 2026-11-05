@@ -149,7 +149,7 @@ public final class ArtifactGameTests {
         liquid.finishUsingItem(h.getLevel(),p);check(ArtifactServer.ledger(p).souls()==25,"Drink restores 25 souls");
         finish(h,p);
     }
-    @GameTest(padding=20,maxTicks=130) public void altarRitualAndCompass(GameTestHelper h) {
+    @GameTest(padding=20,maxTicks=250) public void altarRitualAndCompass(GameTestHelper h) {
         ServerPlayer p=player(h);var world=h.getLevel();
         var layout=AttunementSystem.layout(world.getSeed(),BlockPos.ZERO);
         check(layout.size()==8&&new HashSet<>(layout).size()==8,"Eight unique altar locations");
@@ -163,7 +163,8 @@ public final class ArtifactGameTests {
         p.teleportTo(center.getX()+.5,center.getY()+1,center.getZ()+.5);p.setOnGround(true);
         p.setItemInHand(InteractionHand.MAIN_HAND,new ItemStack(dev.johnpablo.dungeonsartifacts.item.SoulItems.COMPASS));
         AttunementSystem.tickPlayer(p);check(p.getMainHandItem().isEmpty(),"Compass breaks within 20 blocks");
-        h.runAfterDelay(85,() -> {
+        h.runAfterDelay(100,() -> check(p.getAttachedOrCreate(PlayerData.ATTUNEMENT)==0,"Ritual has not finished after five seconds"));
+        h.runAfterDelay(205,() -> {
             check(p.getAttachedOrCreate(PlayerData.ATTUNEMENT)==1,"Ritual grants level one");
             check(AttunementSystem.sites(world).getFirst().used(),"Altar permanently spent");
             AttunementSystem.tickPlayer(p);check(p.getAttachedOrCreate(PlayerData.ATTUNEMENT)==1,"Cannot reuse altar");
@@ -201,6 +202,117 @@ public final class ArtifactGameTests {
         for(int i=0;i<4;i++)zombie(h).hurtServer(h.getLevel(),h.getLevel().damageSources().playerAttack(p),100);
         check(ArtifactServer.ledger(p).souls()==3&&p.getAttachedOrCreate(PlayerData.FRACTION)==0,"Four 0.75-soul kills give three souls exactly");
         finish(h,p);
+    }
+
+    private static boolean achieved(ServerPlayer p,String path) {
+        var advancement=p.level().getServer().getAdvancements().get(DungeonsArtifacts.id("artifacts/"+path));
+        return advancement!=null&&p.getAdvancements().getOrStartProgress(advancement).isDone();
+    }
+    @GameTest(padding=20) public void indirectKillCredit(GameTestHelper h) {
+        ServerPlayer p=player(h);ArtifactServer.save(p,new PlayerLedger(50));
+        Zombie z=zombie(h);z.hurtServer(h.getLevel(),h.getLevel().damageSources().playerAttack(p),1);
+        z.invulnerableTime=0;z.hurtServer(h.getLevel(),h.getLevel().damageSources().fall(),100);
+        check(p.getAttachedOrCreate(PlayerData.FRACTION)==2,"Fall death credits recent player attacker");
+        Zombie uncredited=zombie(h);uncredited.hurtServer(h.getLevel(),h.getLevel().damageSources().fall(),100);
+        check(p.getAttachedOrCreate(PlayerData.FRACTION)==2,"Uncredited environmental deaths grant nothing");
+        var cow=h.spawn(EntityTypes.COW,new BlockPos(4,2,4));cow.hurtServer(h.getLevel(),h.getLevel().damageSources().playerAttack(p),100);
+        check(ArtifactServer.ledger(p).souls()==1,"Credited passive mob also grants souls");
+        finish(h,p);
+    }
+    @GameTest(padding=20) public void deathEchoAndKeepInventory(GameTestHelper h) {
+        var world=h.getLevel();var server=world.getServer();var rule=net.minecraft.world.level.gamerules.GameRules.KEEP_INVENTORY;
+        boolean previous=world.getGameRules().get(rule);
+        ServerPlayer p=player(h);p.setGameMode(GameType.SURVIVAL);
+        ArtifactServer.save(p,new PlayerLedger(50));SoulGathering.collectQuarters(p,83);
+        var uuid=p.getUUID();
+        world.getGameRules().set(rule,false,server);
+        p.hurtServer(world,world.damageSources().genericKill(),1000);
+        check(p.getAttachedOrCreate(PlayerData.STATE).souls()==0&&p.getAttachedOrCreate(PlayerData.FRACTION)==0,"Death clears exactly all souls");
+        var echo=world.getAttachedOrCreate(SoulEchoes.ECHOES).stream().filter(e -> e.owner().equals(uuid)).findFirst().orElseThrow();
+        check(echo.quarters()==83,"Echo preserves 20.75 souls");
+        var serialized=SoulEchoes.Echo.CODEC.encodeStart(net.minecraft.nbt.NbtOps.INSTANCE,echo).getOrThrow();
+        check(SoulEchoes.Echo.CODEC.parse(net.minecraft.nbt.NbtOps.INSTANCE,serialized).getOrThrow().equals(echo),"Echo save/load codec preserves amount and location");
+        ServerPlayer stranger=player(h);ArtifactServer.save(stranger,new PlayerLedger(50));
+        stranger.teleportTo(echo.location().pos().getX()+.5,echo.location().pos().getY(),echo.location().pos().getZ()+.5);
+        SoulEchoes.tick(server);check(ArtifactServer.ledger(stranger).souls()==0,"Another player cannot steal the echo");
+        server.getPlayerList().remove(stranger);stranger.discard();
+        p=server.getPlayerList().respawn(p,false,Entity.RemovalReason.KILLED);p.connection.player=p;
+        p.connection.handleAcceptPlayerLoad(new net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket());
+        check(ArtifactServer.ledger(p).souls()==0,"Respawn does not restore dropped souls");
+        p.teleportTo(echo.location().pos().getX()+.5,echo.location().pos().getY(),echo.location().pos().getZ()+.5);
+        p.setAttached(PlayerData.CAPACITY_OVERRIDE,10);SoulEchoes.tick(server);
+        check(ArtifactServer.ledger(p).souls()==10,"Recovery obeys current capacity");
+        check(world.getAttachedOrCreate(SoulEchoes.ECHOES).stream().filter(e -> e.owner().equals(uuid)).findFirst().orElseThrow().quarters()==43,"Overflow remains in echo");
+        p.setAttached(PlayerData.CAPACITY_OVERRIDE,50);SoulEchoes.tick(server);
+        check(ArtifactServer.ledger(p).souls()==20&&p.getAttachedOrCreate(PlayerData.FRACTION)==3,"Exact fractional recovery");
+        check(achieved(p,"soul_searching"),"Echo challenge granted");
+        world.getGameRules().set(rule,true,server);
+        p.hurtServer(world,world.damageSources().genericKill(),1000);
+        p=server.getPlayerList().respawn(p,false,Entity.RemovalReason.KILLED);p.connection.player=p;
+        check(ArtifactServer.ledger(p).souls()==20&&p.getAttachedOrCreate(PlayerData.FRACTION)==3,"KeepInventory preserves souls through respawn");
+        check(world.getAttachedOrCreate(SoulEchoes.ECHOES).stream().noneMatch(e -> e.owner().equals(uuid)),"KeepInventory creates no echo");
+        world.getGameRules().set(rule,previous,server);finish(h,p);
+    }
+    @GameTest(padding=20) public void soulCommands(GameTestHelper h) throws Exception {
+        ServerPlayer p=player(h);var commands=h.getLevel().getServer().getCommands().getDispatcher();
+        var source=h.getLevel().getServer().createCommandSourceStack().withEntity(p);
+        commands.execute("Soul clear @s",source);
+        check(ArtifactServer.ledger(p).souls()==0,"Clear command");
+        commands.execute("Soul max @s 125",source);commands.execute("soul add @s 200",source);
+        check(ArtifactServer.capacity(p)==125&&ArtifactServer.ledger(p).souls()==125,"Persistent exact max and bounded addition");
+        p.setAttached(PlayerData.FRACTION,3);commands.execute("Soul clear @s",source);
+        check(p.getAttachedOrCreate(PlayerData.FRACTION)==0,"Clear removes fractional remainder");
+        boolean rejected=false;
+        try {commands.execute("Soul add @s 1",p.createCommandSourceStack());}catch(com.mojang.brigadier.exceptions.CommandSyntaxException expected){rejected=true;}
+        check(rejected,"Non-operator cannot change souls");finish(h,p);
+    }
+    @GameTest(padding=20) public void lethalMushroomAndLightningChallenges(GameTestHelper h) {
+        ServerPlayer p=player(h);
+        for(int i=0;i<10;i++)check(use(p,Artifact.LIGHTNING_ROD)==InteractionResult.SUCCESS,"Successful rapid lightning");
+        check(achieved(p,"god_of_lightning"),"Ten lightning activations within five seconds");
+        p.setGameMode(GameType.SURVIVAL);p.setHealth(.5f);p.invulnerableTime=0;
+        int expected=p.getAttachedOrCreate(PlayerData.STATE).souls()*4+p.getAttachedOrCreate(PlayerData.FRACTION);
+        use(p,Artifact.DEATH_CAP_MUSHROOM);
+        check(!p.isAlive()&&achieved(p,"deathcap"),"Lethal mushroom achievement");
+        check(p.getAttachedOrCreate(PlayerData.STATE).souls()==0,"Lethal activation cannot resurrect dropped souls");
+        check(h.getLevel().getAttachedOrCreate(SoulEchoes.ECHOES).stream().anyMatch(e -> e.owner().equals(p.getUUID())&&e.quarters()==expected),"Mushroom death stores original soul balance");
+        finish(h,p);
+    }
+    @GameTest(padding=20,maxTicks=550) public void bootsAndBottleChallenges(GameTestHelper h) {
+        ServerPlayer p=player(h);use(p,Artifact.BOOTS_OF_LEVITATION);use(p,Artifact.BOOTS_OF_LEVITATION);
+        check(!achieved(p,"brought_a_bucket"),"Early stop does not grant boots challenge");
+        check(use(p,Artifact.BOOTS_OF_LEVITATION)==InteractionResult.SUCCESS,"Boots restart");
+        h.runAfterDelay(505,() -> {
+            check(achieved(p,"brought_a_bucket"),"Full boots duration grants challenge");
+            p.setItemInHand(InteractionHand.OFF_HAND,new ItemStack(Items.GLASS_BOTTLE));
+            zombie(h).hurtServer(h.getLevel(),h.getLevel().damageSources().playerAttack(p),100);
+            check(achieved(p,"sold_your_soul"),"Offhand bottle kill grants challenge");finish(h,p);
+        });
+    }
+    @GameTest(padding=20,maxTicks=30) public void compassRecipeUnlock(GameTestHelper h) {
+        ServerPlayer p=player(h);var key=net.minecraft.resources.ResourceKey.create(Registries.RECIPE,DungeonsArtifacts.id("attuned_compass"));
+        check(!p.getRecipeBook().contains(key),"Recipe initially locked");
+        p.getInventory().add(new ItemStack(ArtifactItems.ITEMS.get(Artifact.GHOST_CLOAK)));
+        p.containerMenu.broadcastChanges();
+        h.runAfterDelay(5,() -> {check(p.getRecipeBook().contains(key),"Soul artifact unlocks recipe");check(achieved(p,"root"),"Artifacts advancement tab unlocked");finish(h,p);});
+    }
+
+    @GameTest(padding=20,maxTicks=130) public void lightningChallengeWindow(GameTestHelper h) {
+        ServerPlayer p=player(h);
+        for(int i=0;i<9;i++)use(p,Artifact.LIGHTNING_ROD);
+        check(!achieved(p,"god_of_lightning"),"Nine uses aren't enough");
+        h.runAfterDelay(101,() -> {
+            check(use(p,Artifact.LIGHTNING_ROD)==InteractionResult.SUCCESS,"Tenth use after five seconds");
+            check(!achieved(p,"god_of_lightning"),"Old activations expire outside the five-second window");finish(h,p);
+        });
+    }
+    @GameTest(padding=20) public void compassCraftingPattern(GameTestHelper h) {
+        var recipe=(net.minecraft.world.item.crafting.ShapedRecipe)h.getLevel().getServer().getRecipeManager().byKey(net.minecraft.resources.ResourceKey.create(Registries.RECIPE,DungeonsArtifacts.id("attuned_compass"))).orElseThrow().value();
+        var items=new ArrayList<ItemStack>(List.of(new ItemStack(Items.ECHO_SHARD),dev.johnpablo.dungeonsartifacts.item.SoulItems.bottle(200),new ItemStack(Items.ECHO_SHARD),
+            new ItemStack(Items.IRON_INGOT),new ItemStack(Items.COMPASS),new ItemStack(Items.IRON_INGOT),ItemStack.EMPTY,new ItemStack(Items.ECHO_SHARD),ItemStack.EMPTY));
+        check(recipe.matches(net.minecraft.world.item.crafting.CraftingInput.of(3,3,items),h.getLevel()),"ESE / ICI / centered E recipe matches with one bottle");
+        items.set(6,items.get(7));items.set(7,ItemStack.EMPTY);
+        check(!recipe.matches(net.minecraft.world.item.crafting.CraftingInput.of(3,3,items),h.getLevel()),"Bottom echo must be centered");h.succeed();
     }
 
 }

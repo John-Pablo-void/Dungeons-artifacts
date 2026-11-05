@@ -1,5 +1,7 @@
 package dev.johnpablo.dungeonsartifacts.client;
 import dev.johnpablo.dungeonsartifacts.soul.PlayerData;
+import dev.johnpablo.dungeonsartifacts.DungeonsArtifacts;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.*;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -17,18 +19,16 @@ public final class ArtifactsClient implements ClientModInitializer {
             var mc=Minecraft.getInstance();
             if(!showSouls||mc.player==null||mc.player.isSpectator()||mc.player.isPassenger()) {original.extractRenderState(g,delta);return;}
             int souls=mc.player.getAttachedOrCreate(PlayerData.SOULS), cap=mc.player.getAttachedOrCreate(PlayerData.CAPACITY);
-            if(cap<=0)return;
-            int x=g.guiWidth()/2-91,y=g.guiHeight()-29,color=mc.player.getAttachedOrCreate(PlayerData.DENIED)>0?0xffff7070:0xff80eddf;
+            int x=g.guiWidth()/2-91,y=g.guiHeight()-29;
             double total=souls+mc.player.getAttachedOrCreate(PlayerData.FRACTION)/4.0;
-            g.fill(x,y,x+182,y+5,0xff263b45);
-            g.fill(x,y,x+(int)(182*total/cap),y+5,color);
-            String amount=total==(int)total?Integer.toString((int)total):Double.toString(total);
-            var label=Component.translatable("hud.dungeons_artifacts.souls",amount,cap);
-            g.pose().pushMatrix();
-            g.pose().translate(g.guiWidth()/2f,y-1);
-            g.pose().scale(.65f,.65f);
-            g.text(mc.font,label,-mc.font.width(label)/2,0,0xffffffff);
-            g.pose().popMatrix();
+            g.blitSprite(RenderPipelines.GUI_TEXTURED,DungeonsArtifacts.id("hud/soul_bar_background"),x,y,182,5);
+            int fill=cap>0?(int)(182*total/cap):0;
+            if(fill>0)g.blitSprite(RenderPipelines.GUI_TEXTURED,DungeonsArtifacts.id("hud/soul_bar_progress"),182,5,0,0,x,y,fill,5);
+            // Stored fractions affect progress; the displayed number is always floored.
+            var label=Component.literal(Integer.toString(souls));
+            g.text(mc.font,label,g.guiWidth()/2-mc.font.width(label)/2,y-6,
+                mc.player.getAttachedOrCreate(PlayerData.DENIED)>0?0xffff7070:0xff80ffff);
+
         });
         HudElementRegistry.replaceElement(VanillaHudElements.EXPERIENCE_LEVEL,original -> (g,delta) -> {
             if(!showSouls||Minecraft.getInstance().player==null||Minecraft.getInstance().player.isPassenger())original.extractRenderState(g,delta);

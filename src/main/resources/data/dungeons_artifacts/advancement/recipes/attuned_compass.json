@@ -1,0 +1,25 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "artifact": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "#dungeons_artifacts:soul_artifacts"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "artifact"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "dungeons_artifacts:attuned_compass"
+    ]
+  }
+}

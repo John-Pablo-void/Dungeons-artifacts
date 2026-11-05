@@ -1,0 +1,47 @@
+{
+  "criteria": {
+    "completed": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "dungeons_artifacts:soul_healer",
+              "dungeons_artifacts:satchel_of_elixirs",
+              "dungeons_artifacts:totem_of_shielding",
+              "dungeons_artifacts:lightning_rod",
+              "dungeons_artifacts:corrupted_seeds",
+              "dungeons_artifacts:gong_of_weakening",
+              "dungeons_artifacts:satchel_of_elements",
+              "dungeons_artifacts:death_cap_mushroom",
+              "dungeons_artifacts:ghost_cloak",
+              "dungeons_artifacts:updraft_tome",
+              "dungeons_artifacts:boots_of_levitation"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "completed"
+    ]
+  ],
+  "display": {
+    "icon": {
+      "id": "dungeons_artifacts:soul_healer"
+    },
+    "title": {
+      "translate": "advancements.dungeons_artifacts.root.title"
+    },
+    "description": {
+      "translate": "advancements.dungeons_artifacts.root.description"
+    },
+    "frame": "task",
+    "show_toast": false,
+    "announce_to_chat": false,
+    "hidden": false,
+    "background": "minecraft:gui/advancements/backgrounds/adventure"
+  }
+}

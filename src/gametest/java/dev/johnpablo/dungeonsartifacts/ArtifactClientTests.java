@@ -16,10 +16,10 @@ public final class ArtifactClientTests implements FabricClientGameTest {
         try(var world=context.worldBuilder().create()) {
             world.getServer().runOnServer(server -> {
                 var p=world.getConnection().getServerPlayer();p.setGameMode(GameType.SURVIVAL);
-                var ledger=ArtifactServer.ledger(p);ledger.collect(50);ArtifactServer.save(p,ledger);
+                var ledger=ArtifactServer.ledger(p);ledger.collect(9);ArtifactServer.save(p,ledger);p.setAttached(PlayerData.FRACTION,3);
                 int slot=0;for(Artifact a:Artifact.values()) p.getInventory().setItem(slot++,new ItemStack(ArtifactItems.ITEMS.get(a)));
             });
-            context.waitFor(mc -> mc.player!=null&&mc.player.getAttachedOrCreate(PlayerData.SOULS)==50);
+            context.waitFor(mc -> mc.player!=null&&mc.player.getAttachedOrCreate(PlayerData.SOULS)==9);
             context.waitTicks(30);
             context.runOnClient(mc -> mc.gui.setScreen(new InventoryScreen(mc.player)));
             context.waitTicks(10);context.takeScreenshot("artifacts-inventory");
@@ -27,6 +27,14 @@ public final class ArtifactClientTests implements FabricClientGameTest {
             context.getInput().pressKey(org.lwjgl.glfw.GLFW.GLFW_KEY_J);
             context.waitFor(mc -> dev.johnpablo.dungeonsartifacts.client.ArtifactsClient.showSouls);
             context.waitTicks(10);context.takeScreenshot("artifacts-soul-hud");
+            context.runOnClient(mc -> {
+                var advancements=mc.player.connection.getAdvancements();
+                var root=advancements.get(DungeonsArtifacts.id("artifacts/root"));
+                if(root==null)throw new AssertionError("Artifacts tab must sync to client");
+                mc.gui.setScreen(new net.minecraft.client.gui.screens.advancements.AdvancementsScreen(advancements));
+                advancements.setSelectedTab(root,true);
+            });
+            context.waitTicks(5);context.takeScreenshot("artifacts-advancements");context.setScreen(() -> null);
             world.getServer().runOnServer(server -> {if(!GhostMovement.begin(world.getConnection().getServerPlayer()))throw new AssertionError("Ghost activation");});
             context.waitFor(mc -> mc.player.hasEffect(ArtifactEffects.GHOST));
             context.waitTicks(5);context.takeScreenshot("artifacts-ghost-hands");
@@ -52,7 +60,11 @@ public final class ArtifactClientTests implements FabricClientGameTest {
                 p.teleportTo(p.level(),base.getX()+.5,base.getY(),base.getZ()+.5,java.util.Set.of(),0,85,false);
                 p.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
                 var eye=net.minecraft.core.BlockPos.containing(p.getEyePosition());
-                for(int dx=-1;dx<=1;dx++)for(int dz=-1;dz<=1;dz++)for(int dy=0;dy<=1;dy++)p.level().setBlock(base.offset(dx,dy,dz),net.minecraft.world.level.block.Blocks.STONE.defaultBlockState(),3);
+                for(int dx=-6;dx<=6;dx++)for(int dz=-6;dz<=6;dz++) {
+                    for(int dy=0;dy<=1;dy++)p.level().setBlock(base.offset(dx,dy,dz),(dy==0?net.minecraft.world.level.block.Blocks.STONE:net.minecraft.world.level.block.Blocks.DEEPSLATE).defaultBlockState(),3);
+                    p.level().setBlock(base.offset(dx,-1,dz),((dx+dz)%3==0?net.minecraft.world.level.block.Blocks.GOLD_BLOCK:net.minecraft.world.level.block.Blocks.STONE).defaultBlockState(),3);
+                    p.level().setBlock(base.offset(dx,2,dz),((dx+dz)%3==0?net.minecraft.world.level.block.Blocks.DIAMOND_BLOCK:net.minecraft.world.level.block.Blocks.DEEPSLATE).defaultBlockState(),3);
+                }
                 p.level().setBlock(eye,net.minecraft.world.level.block.Blocks.STONE.defaultBlockState(),3);
                 p.level().setBlock(p.blockPosition().below(),net.minecraft.world.level.block.Blocks.GOLD_BLOCK.defaultBlockState(),3);
                 p.level().setBlock(eye.above(),net.minecraft.world.level.block.Blocks.DIAMOND_BLOCK.defaultBlockState(),3);
@@ -62,6 +74,12 @@ public final class ArtifactClientTests implements FabricClientGameTest {
             context.waitTicks(5);context.takeScreenshot("ghost-adjacent-floor");
             world.getServer().runOnServer(server -> {var p=world.getConnection().getServerPlayer();p.teleportTo(p.level(),p.getX(),p.getY(),p.getZ(),java.util.Set.of(),0,-85,false);});
             context.waitTicks(5);context.takeScreenshot("ghost-adjacent-ceiling");
+            world.getServer().runOnServer(server -> {var p=world.getConnection().getServerPlayer();p.teleportTo(p.level(),p.getX(),p.getY(),p.getZ(),java.util.Set.of(),0,0,false);});
+            context.waitTicks(5);context.takeScreenshot("ghost-five-block-window");
+            world.getServer().runOnServer(server -> {
+                var p=world.getConnection().getServerPlayer();
+                if(p.level().getBlockState(p.blockPosition().offset(5,0,0)).isAir()||p.level().getBlockState(p.blockPosition().offset(0,1,5)).isAir())throw new AssertionError("Ghost window must not remove real blocks");
+            });
             world.getServer().runOnServer(server -> GhostMovement.end(world.getConnection().getServerPlayer(),true));
             context.waitFor(mc -> !mc.player.hasEffect(ArtifactEffects.GHOST));
         }

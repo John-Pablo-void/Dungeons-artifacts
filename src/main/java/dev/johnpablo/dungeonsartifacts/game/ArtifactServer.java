@@ -51,6 +51,8 @@ public final class ArtifactServer {
         if (p.getAttachedOrCreate(type) != n) p.setAttached(type, n);
     }
     public static int capacity(ServerPlayer p) {
+        int override=p.getAttachedOrCreate(PlayerData.CAPACITY_OVERRIDE);
+        if(override>=0)return override;
         int amount = DungeonsArtifacts.CONFIG.soulCapacity;
         var registry = p.level().registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
         for (var entry : Map.of("soul_vessel", DungeonsArtifacts.CONFIG.vesselCapacityPerLevel, "soul_reservoir", DungeonsArtifacts.CONFIG.reservoirCapacityPerLevel).entrySet()) {
@@ -63,12 +65,14 @@ public final class ArtifactServer {
         return amount;
     }
     public static void initialize() {
+        SoulCommands.initialize();
         ServerTickEvents.START_SERVER_TICK.register(ShieldSystem::tick);
+        ServerTickEvents.END_SERVER_TICK.register(SoulEchoes::tick);
         ServerTickEvents.END_SERVER_TICK.register(server -> AttunementSystem.tick(server.overworld()));
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             for (ServerPlayer p : server.getPlayerList().getPlayers()) {
                 PlayerLedger state = ledger(p);
-                if (state.tickBoots(now(p)) == PlayerLedger.Boots.EXPIRED) land(p);
+                if (state.tickBoots(now(p)) == PlayerLedger.Boots.EXPIRED) {land(p);ArtifactChallenges.award(p,"brought_a_bucket");}
                 if (state.bootsActive()) {
                     if (!p.isAlive() || p.isSpectator() || p.isPassenger()) { state.stopBoots(now(p)); land(p); }
                     else effect(p, MobEffects.LEVITATION, 5, 1);
@@ -88,14 +92,14 @@ public final class ArtifactServer {
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> cleanup(handler.player, true));
         ServerEntityLevelChangeEvents.AFTER_PLAYER_CHANGE_LEVEL.register((p, origin, destination) -> cleanup(p, true));
         ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
-            if (entity instanceof ServerPlayer p) cleanup(p, false);
-            Entity killer = source.getEntity();
+            if (entity instanceof ServerPlayer p) {SoulEchoes.onDeath(p);cleanup(p, false);}
+            Entity killer = entity.getLastHurtByPlayerMemoryTime()>0 ? entity.getLastHurtByPlayer() : source.getEntity();
             if (killer instanceof TamableAnimal pet) killer = pet.getOwner();
-            if (entity instanceof Enemy && killer instanceof ServerPlayer p && !allied(p, entity)) {
+            if (entity instanceof Mob && killer instanceof ServerPlayer p && !allied(p, entity)) {
                 var state = ledger(p);
                 int gained = SoulGathering.collectKill(p, state, source);
                 save(p, state);
-                if (gained > 0) { particles(p.level(), ParticleTypes.SOUL, p.position().add(0, 1, 0), 12); sound(p, SoundEvents.EXPERIENCE_ORB_PICKUP, .5f); }
+                if (gained > 0) { particles((ServerLevel)entity.level(), ParticleTypes.SOUL, entity.position().add(0, entity.getBbHeight()*.5, 0), 12); sound(p, SoundEvents.EXPERIENCE_ORB_PICKUP, .5f); }
             }
         });
         ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
@@ -107,6 +111,7 @@ public final class ArtifactServer {
             server.getPlayerList().getPlayers().forEach(p -> cleanup(p, true));
             ShieldSystem.clear();
             AttunementSystem.clear();
+            ArtifactChallenges.clear();
         });
         ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
             if (entity.entityTags().contains("dungeons_artifacts_shield") && !ShieldSystem.owns(entity.getUUID())) entity.discard();
@@ -114,6 +119,7 @@ public final class ArtifactServer {
     }
     private static void cleanup(ServerPlayer p, boolean safeExit) {
         AttunementSystem.release(p.getUUID());
+        ArtifactChallenges.release(p.getUUID());
         var state = ledger(p);
         if (state.bootsActive()) { state.stopBoots(now(p)); land(p); }
         GhostMovement.end(p, safeExit);
@@ -135,16 +141,21 @@ public final class ArtifactServer {
             var result = state.toggleBoots(now(p));
             if (result == PlayerLedger.Boots.COOLDOWN) return deny(p, "cooldown");
             if (result == PlayerLedger.Boots.STARTED) { effect(p, MobEffects.LEVITATION, 5, 1); sound(p, SoundEvents.BREEZE_WIND_CHARGE_BURST.value(), 1); }
-            else land(p);
+            else {land(p);if(result==PlayerLedger.Boots.EXPIRED)ArtifactChallenges.award(p,"brought_a_bucket");}
             save(p, state);
             return InteractionResult.SUCCESS;
         }
         int cooldown = artifact == Artifact.TOTEM_OF_SHIELDING ? DungeonsArtifacts.CONFIG.shieldCooldownTicks : artifact.cooldownTicks;
         var result = state.activate(artifact, now(p), artifact.soulCost, cooldown, () -> activate(p, hand, artifact));
+        // A lethal mushroom can invoke the death handler inside activate(). Never restore its dropped souls.
+        if(!p.isAlive()) {
+            var dead=p.getAttachedOrCreate(PlayerData.STATE);
+            state=PlayerLedger.restore(capacity(p),new PlayerLedger.Snapshot(dead.souls(),state.snapshot().cooldowns(),-1));
+        }
         save(p, state);
         if (result == PlayerLedger.Activation.SUCCESS) {
+            if(artifact==Artifact.LIGHTNING_ROD)ArtifactChallenges.lightning(p);
             if (cooldown > 0) p.getCooldowns().addCooldown(p.getItemInHand(hand), cooldown);
-            if (artifact == Artifact.DEATH_CAP_MUSHROOM) p.getItemInHand(hand).consume(1, p);
             return InteractionResult.SUCCESS;
         }
         return deny(p, result == PlayerLedger.Activation.INSUFFICIENT_SOULS ? "souls" : result == PlayerLedger.Activation.COOLDOWN ? "cooldown" : "target");
@@ -215,9 +226,11 @@ public final class ArtifactServer {
             }
             case DEATH_CAP_MUSHROOM -> {
                 effect(p, MobEffects.SPEED, 300, 1); effect(p, MobEffects.STRENGTH, 200, 1);
+                var eaten=p.getItemInHand(hand).getItem();
+                p.getItemInHand(hand).consume(1,p);
                 float damage = level.getDifficulty() == Difficulty.HARD ? 2 : level.getDifficulty() == Difficulty.PEACEFUL ? 0 : 1;
-                if (damage > 0) p.hurtServer(level, level.damageSources().magic(), damage);
-                particles(level, new ItemParticleOption(ParticleTypes.ITEM, p.getItemInHand(hand).getItem()), p.getEyePosition(), 15);
+                if (damage > 0) {p.hurtServer(level, level.damageSources().magic(), damage);if(!p.isAlive())ArtifactChallenges.award(p,"deathcap");}
+                particles(level, new ItemParticleOption(ParticleTypes.ITEM, eaten), p.getEyePosition(), 15);
                 sound(p, SoundEvents.GENERIC_EAT.value(), 1);
             }
             case GHOST_CLOAK -> { return GhostMovement.begin(p); }

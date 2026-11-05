@@ -1,71 +1,70 @@
-# Verification — 0.2.0-dev, Minecraft 26.2 / Fabric
+# Verification — 0.3.0-dev, Minecraft 26.2 / Fabric
 
-Validated on 2026-11-04 with Java 25, Gradle 9.8.2, Loom 1.19.3,
+Validated on 2026-11-05 with Java 25, Gradle 9.8.2, Loom 1.19.3,
 Fabric Loader 0.20.1 and Fabric API 0.161.0+26.2.
 
-## Results
+## Checks
 
-| Check | Result |
-| --- | --- |
-| `./gradlew build --offline` | Passed: main/client compilation, mod and source JARs, unit tests, server game tests |
-| JUnit / coreTest | Passed: 79 ledger assertions |
-| Server game tests | 18 mod tests plus vanilla's `always_pass`, 19 total, all passed |
-| `./gradlew runClientGametest --offline` | Passed on dummy Xorg with Mesa OpenGL software rendering |
-| `python3 scripts/check-assets.py` | Passed: eleven artifact models, resource links, PNG integrity and translations |
+- `./gradlew build --offline`: common/client compilation, JARs, JUnit/core ledger
+  checks (79 assertions), and server game tests.
+- Server suite: 26 mod game tests plus Minecraft's `always_pass`, 27 total.
+- `./gradlew runClientGametest --offline`: real graphical client on dummy Xorg
+  and Mesa software OpenGL.
+- `python3 scripts/check-assets.py`: original eleven artifact resource references,
+  model bounds, display transforms, PNG integrity and translations.
 
-## Changes exercised in Minecraft
+## New gameplay regression coverage
 
-- Levitation boots apply amplifier 1 (II), toggle off without adding Slow Falling.
-  The existing 25-second duration and half-duration/15-second cooldown rules are
-  retained; their HUD countdown is removed.
-- Updraft selects at most six mobs, applies Levitation II first, and applies stun
-  after levitation ends. An actual five-block fall deals six HP instead of two;
-  the fall modifier is consumed afterward.
-- Lightning Rod spawns a functional bolt. Ticking that bolt charges a creeper and
-  ignites an entity whose vanilla fire immunity has ended. The original immediate
-  ten-HP rod damage is retained; subsequent real flashes obey vanilla hurt immunity.
-- Soul Vessel on armor held in the main hand gives no capacity; equipping it gives
-  the intended bonus once. Soul collection scales by inventory artifacts and caps
-  at three before bonuses. Vacuum and attunement bonuses are applied correctly.
-- Four kills at 0.75 souls give exactly three souls. A real player-file save/reload
-  preserves fractional souls, attunement level, ordinary souls and cooldowns.
-- Offhand bottles capture the normal gathering reward without duplicating it in
-  the player's meter. Only full bottles accept ice. A fueled brewing stand runs
-  its complete 400-tick cycle, consumes one ice, produces Liquid Souls, and leaves
-  an adjacent partial bottle untouched. Drinking Liquid Souls restores 25 souls.
-- Altar layout is deterministic with eight unique positions in the required
-  spawn-distance range. Loading a pending site constructs its altar. Nearby
-  compasses break. Completing the ritual raises attunement and marks the altar
-  spent; it cannot grant a second reward.
-- Shrine templates contain framed non-mushroom artifacts and decorated pot loot;
-  mushroom stacks are at least two. A normal terrain world is searched using the
-  real structure generator: its shrine has a valid structure start, loot pots,
-  and a supported, nonempty item frame after world placement/rotation.
-- Existing artifact healing, effects, cooldowns, consumption, shield interception,
-  ghost collision, targeting rejection, safe exit and reconnect tests still pass.
+- Actual death and respawn empty the soul balance, preserving the exact quarter-
+  soul amount in an owner-bound echo. Another player cannot collect it. Recovery
+  obeys capacity, leaves excess behind, and ultimately returns all fractions.
+  Echo location/owner/amount survive codec serialization. Actual keepInventory
+  respawn retains the balance and produces no echo.
+- A lethal mushroom grants its challenge and cannot restore the pre-death soul
+  balance after the death callback. Ordinary mushroom consumption remains covered.
+- A player hit followed by a fatal fall earns souls; an uncredited environmental
+  death does not. Credited passive mobs also grant souls. Kill particles originate
+  from the dead entity; fractional gains are retained.
+- Both command spellings work, selector targets resolve, additions respect the
+  command-set absolute capacity, clear removes fractions, and non-operators are
+  denied. Command changes preserve cooldowns.
+- Ten successful lightning uses award the challenge; nine do not, and a tenth
+  use after the five-second window does not combine with expired uses.
+- Early boot deactivation does not award the challenge. A real 500-tick activation
+  expires and awards it. Capturing a kill in an offhand bottle awards its challenge.
+- A soul artifact unlocks the compass recipe and Artifacts tab. The exact
+  `ESE / ICI / [space]E[space]` crafting input matches with one full soul bottle;
+  a bottom-left echo shard fails to match.
+- Attunement remains incomplete after five seconds and completes after ten.
+  Existing tests still cover one-use altars, deterministic eight-site placement,
+  compass breakage, fractional vacuum rewards, full brewing cycles, shrine loot,
+  supported generated item frames, shielding, artifact effects and persistence.
 
-## Client inspection
+## Graphical verification
 
-The client presses J and verifies the soul-meter toggle, synchronized souls,
-original artifact inventory models and hidden ghost hands. A real W-key movement
-crosses a solid wall while preserving floor collision on the server.
+The client toggles J, synchronizes a 9.75-soul balance and displays only `9` above
+a segmented cyan XP-style bar. It opens the synchronized Artifacts advancement
+tab and captures its tree. Collecting all eleven artifacts earns the backpack
+challenge in the actual client/server session.
 
-The camera is then placed inside stone, above gold and below diamond. The inspected
-screenshots show only those adjacent floor/ceiling surfaces and the enclosing
-stone, with no distant terrain visible. The soul count fits inside the replacement
-XP bar without overlapping the hearts.
+Real keyboard movement crosses a solid wall without crossing the floor. Inside
+a test volume, a five-block diamond cutaway renders different floor/ceiling
+textures and separate stone/deepslate layers for legs/head. Screenshots inspect
+forward, upward and downward views. Server checks confirm that real blocks in
+the visible region remain intact. Normal-terrain shrine placement remains tested.
 
-Current screenshots are in `docs/screenshots/`: `soul-hud.png`,
-`ghost-adjacent-floor.png`, and `ghost-adjacent-ceiling.png`.
+Screenshots are in `docs/screenshots/`, including `soul-hud.png`,
+`ghost-five-block-window.png`, `ghost-adjacent-floor.png`,
+`ghost-adjacent-ceiling.png`, and `artifacts-advancements.png`.
 
 ## Limits
 
-- Tests use simulated server players and an integrated graphical client, not a
-  multi-user public server or every possible combination with other mods.
-- Punchy compatibility resources remain included; Punchy itself was not installed.
-- The ritual and seeded generation are exercised separately; the tests do not
-  explore every altar chunk in a full survival world or visually judge all rituals.
-- Cloud runs log unavailable Mojang authentication endpoints, absent audio hardware,
-  and a dummy-display cursor warning at shutdown. These did not prevent tests.
-- Existing generated shrines are not rebuilt. Unopened legacy shrine chests use
-  the corrected loot restrictions; new chunks get arches, frames and pots.
+Tests cover an integrated graphical client and simulated server players, not a
+public multiplayer session or every combination with other mods. Echo persistence
+is verified through its codec and ordinary server-world save lifecycle, rather
+than a separate full process restart followed by recovery. Ritual timing is tested
+server-side; its new sculk particles have not been visually judged in every biome.
+Punchy remains uninstalled for runtime testing.
+
+Cloud logs contain unavailable Mojang authentication endpoints, missing audio
+hardware and a dummy-display cursor warning. These do not prevent the tests.

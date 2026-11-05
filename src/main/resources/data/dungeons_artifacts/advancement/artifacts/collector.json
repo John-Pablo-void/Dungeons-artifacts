@@ -1,0 +1,65 @@
+{
+  "criteria": {
+    "completed": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "dungeons_artifacts:soul_healer"
+          },
+          {
+            "items": "dungeons_artifacts:satchel_of_elixirs"
+          },
+          {
+            "items": "dungeons_artifacts:totem_of_shielding"
+          },
+          {
+            "items": "dungeons_artifacts:lightning_rod"
+          },
+          {
+            "items": "dungeons_artifacts:corrupted_seeds"
+          },
+          {
+            "items": "dungeons_artifacts:gong_of_weakening"
+          },
+          {
+            "items": "dungeons_artifacts:satchel_of_elements"
+          },
+          {
+            "items": "dungeons_artifacts:death_cap_mushroom"
+          },
+          {
+            "items": "dungeons_artifacts:ghost_cloak"
+          },
+          {
+            "items": "dungeons_artifacts:updraft_tome"
+          },
+          {
+            "items": "dungeons_artifacts:boots_of_levitation"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "completed"
+    ]
+  ],
+  "display": {
+    "icon": {
+      "id": "dungeons_artifacts:satchel_of_elements"
+    },
+    "title": {
+      "translate": "advancements.dungeons_artifacts.collector.title"
+    },
+    "description": {
+      "translate": "advancements.dungeons_artifacts.collector.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "dungeons_artifacts:artifacts/root"
+}

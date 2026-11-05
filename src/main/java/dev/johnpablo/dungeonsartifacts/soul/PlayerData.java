@@ -18,6 +18,7 @@ public final class PlayerData {
     public static final AttachmentType<PlayerLedger.Snapshot> STATE = AttachmentRegistry.create(DungeonsArtifacts.id("state"),
         b -> b.initializer(() -> new PlayerLedger.Snapshot(0, Map.of(), -1)).persistent(CODEC).copyOnDeath());
     public static final AttachmentType<Integer> FRACTION = AttachmentRegistry.create(DungeonsArtifacts.id("soul_fraction"), b -> b.initializer(() -> 0).persistent(Codec.INT).copyOnDeath().syncWith(ByteBufCodecs.VAR_INT, AttachmentSyncPredicate.targetOnly()));
+    public static final AttachmentType<Integer> CAPACITY_OVERRIDE = AttachmentRegistry.create(DungeonsArtifacts.id("capacity_override"), b -> b.initializer(() -> -1).persistent(Codec.INT).copyOnDeath());
     public static final AttachmentType<Integer> ATTUNEMENT = AttachmentRegistry.create(DungeonsArtifacts.id("attunement"), b -> b.initializer(() -> 0).persistent(Codec.INT).copyOnDeath());
     public static final AttachmentType<Integer> UPDRAFT = AttachmentRegistry.create(DungeonsArtifacts.id("updraft"), b -> b.initializer(() -> 0).persistent(Codec.INT));
     public static final AttachmentType<Integer> SOULS = synced("souls");
